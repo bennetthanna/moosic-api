@@ -1,6 +1,8 @@
 const express = require('express');
-const app = express();
 const AWS = require('aws-sdk');
+const _ = require('lodash');
+
+const app = express();
 
 function assumeRole() {
     const sts = new AWS.STS();
@@ -40,6 +42,12 @@ function convertFilePathsToObjects(filePaths) {
     });
 }
 
+app.use(function(req, res, next) {
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
+    next();
+});
+
 app.get('/', function (req, res) {
     assumeRole()
         .then(s3Client => {
@@ -48,8 +56,8 @@ app.get('/', function (req, res) {
             };
             return s3Client.listObjectsV2(params).promise();
         })
-        .then(res => {
-            const files = convertFilePathsToObjects(res.Contents);
+        .then(s3Response => {
+            const files = convertFilePathsToObjects(s3Response.Contents);
             res.send(files);
         })
         .catch(err => {
