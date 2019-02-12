@@ -49,8 +49,10 @@ app.post('/', function (req, res) {
         Bucket: BUCKET,
         Key: _.get(req, 'body.key')
     }
-    const url = s3Client.getSignedUrl('getObject', params);
-    res.status(200).send({ url });
+    console.log(`Fetching signed URL for S3 key: ${params.Key}`);
+    s3Client.getSignedUrl('getObject', params).promise()
+        .then(url => res.status(200).send({ url }))
+        .catch(err => res.status(400).send({ err }));
 });
 
 app.listen(3000);
