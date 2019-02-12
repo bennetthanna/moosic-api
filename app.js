@@ -50,7 +50,7 @@ app.post('/', function (req, res) {
         Key: _.get(req, 'body.key')
     }
     const url = s3Client.getSignedUrl('getObject', params);
-    res.status(200).send(url);
+    res.status(200).send({ url });
 });
 
 app.listen(3000);
