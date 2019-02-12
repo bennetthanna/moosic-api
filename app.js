@@ -1,33 +1,11 @@
 const express = require('express');
 const AWS = require('aws-sdk');
 const _ = require('lodash');
+const bodyParser = require('body-parser');
+
+const BUCKET = 'bucket-o-moosic';
 
 const app = express();
-
-function assumeRole() {
-    const sts = new AWS.STS();
-    const assumeRoleParams = {
-        RoleArn: 'arn:aws:iam::171578128461:role/moosic-s3-access',
-        RoleSessionName: 'MoosicSession'
-    }
-
-    const assumeRole = sts.assumeRole(assumeRoleParams).promise();
-
-    return assumeRole
-        .then(res => {
-            const assumedRoleCredentials = {
-                accessKeyId: res.Credentials.AccessKeyId,
-                secretAccessKey: res.Credentials.SecretAccessKey,
-                sessionToken: res.Credentials.SessionToken
-            };
-            s3 = new AWS.S3(assumedRoleCredentials);
-            return Promise.resolve(s3);
-        })
-        .catch(err => {
-            console.log(`Whoopsie daisies! Looks like an error occured when trying to assume role: ${err.message}`);
-            return Promise.reject(err);
-        });
-}
 
 function convertFilePathsToObjects(filePaths) {
     return _.map(filePaths, s3Object => {
@@ -48,14 +26,14 @@ app.use(function(req, res, next) {
     next();
 });
 
+app.use(bodyParser.json());
+
 app.get('/', function (req, res) {
-    assumeRole()
-        .then(s3Client => {
-            const params = {
-                Bucket: 'bucket-o-moosic'
-            };
-            return s3Client.listObjectsV2(params).promise();
-        })
+    const s3Client = new AWS.S3();
+    const params = {
+        Bucket: BUCKET
+    };
+    s3Client.listObjectsV2(params).promise()
         .then(s3Response => {
             const files = convertFilePathsToObjects(s3Response.Contents);
             res.send(files);
@@ -63,6 +41,16 @@ app.get('/', function (req, res) {
         .catch(err => {
             console.log(err);
         });
+});
+
+app.post('/', function (req, res) {
+    const s3Client = new AWS.S3();
+    const params = {
+        Bucket: BUCKET,
+        Key: _.get(req, 'body.key')
+    }
+    const url = s3Client.getSignedUrl('getObject', params);
+    res.status(200).send(url);
 });
 
 app.listen(3000);
