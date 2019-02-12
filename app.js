@@ -50,9 +50,15 @@ app.post('/', function (req, res) {
         Key: _.get(req, 'body.key')
     }
     console.log(`Fetching signed URL for S3 key: ${params.Key}`);
-    const url = s3Client.getSignedUrl('getObject', params);
-    console.log(`Retrieved URL: ${url}`);
-    res.status(200).send({ url });
+    s3Client.getSignedUrl('getObject', params, function (err, url) {
+        if (err) {
+            console.log(`Dang flabbit an error occured fetching the URL: ${err}`);
+            return res.status(400).send({ err });
+        } else {
+            console.log(`Retrieved URL: ${url}`);
+            return res.status(200).send({ url });
+        }
+    });
 });
 
 app.listen(3000);
