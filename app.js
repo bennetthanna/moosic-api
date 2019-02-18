@@ -28,15 +28,30 @@ function queryDynamoDb(params) {
     return documentClient.query(params).promise();
 }
 
-function scanDynamoDb() {
-    const params = {
-        TableName : TABLE,
-        AttributesToGet: ['genre']
-    };
-
+function scanDynamoDb(params) {
     const documentClient = new AWS.DynamoDB.DocumentClient({ region: 'us-east-1' });
 
     return documentClient.scan(params).promise();
+}
+
+function getSignedUrl(key) {
+    const s3Client = new AWS.S3();
+    const params = {
+        Bucket: BUCKET,
+        Key: 'country_song'
+    }
+
+    return new Promise(function(resolve, reject) {
+        s3Client.getSignedUrl('getObject', params, function (err, url) {
+            if (err) {
+                console.log(`Dang flabbit an error occured fetching the URL: ${err}`);
+                return reject(err);
+            } else {
+                console.log(`Retrieved URL: ${url}`);
+                return resolve(url);
+            }
+        });
+    });
 }
 
 app.use(function(req, res, next) {
@@ -63,7 +78,12 @@ app.get('/', function (req, res) {
 });
 
 app.get('/genres', function (req, res) {
-    scanDynamoDb()
+    const params = {
+        TableName : TABLE,
+        AttributesToGet: ['genre']
+    };
+
+    scanDynamoDb(params)
         .then(items => {
             if (items.Count < 1) {
                 return res.status(404).send('No genres found');
@@ -172,27 +192,36 @@ app.get('/songs/for/album', [
     }
 );
 
-app.get('/song',
-    (req, res, next) => {
-        req.checkQuery('song', 'Missing song query parameter').notEmpty();
-        req.checkQuery('song', 'Invalid song').isValidSong();
-        const validationErrors = req.validationErrors();
-        if (!_.isEmpty(validationErrors)) {
-            return res.status(400).send(validationErrors);
+app.get('/song', [
+        query('song', 'Missing song query parameter').exists({ checkFalsy: true })
+    ],
+    (req, res) => {
+        const validationErrors = validationResult(req);
+        if (!validationErrors.isEmpty()) {
+            return res.status(400).send(validationErrors.array());
         }
-        next();
-    },
-    async (req, res) => {
-        try {
-            const song = req.query.song;
 
-            // query songs
-            // if _.isEmpty(songs), return 404
+        const song = req.query.song;
 
-            res.status(200).send({ songs });
-        } catch (error) {
-            return res.status(500).send(error);
-        }
+        const params = {
+            TableName : TABLE,
+            FilterExpression: 'song = :song',
+            ExpressionAttributeValues : { ':song' : song }
+        };
+
+        scanDynamoDb(params)
+            .then(items => {
+                if (items.Count < 1) {
+                    return res.status(404).send(`Song ${song} not found`);
+                }
+                return getSignedUrl(items.Items[0].s3Key);
+            })
+            .then(url => {
+                return res.status(200).send({ url });
+            })
+            .catch(err => {
+                return res.status(500).send(err);
+            });
     }
 );
 
