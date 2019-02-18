@@ -2,6 +2,7 @@ const express = require('express');
 const AWS = require('aws-sdk');
 const _ = require('lodash');
 const bodyParser = require('body-parser');
+const { query, validationResult } = require('express-validator/check');
 
 const BUCKET = 'bucket-o-moosic';
 const TABLE = 'music';
@@ -74,27 +75,34 @@ app.get('/genres', function (req, res) {
         });
 });
 
-app.get('/artists/for/genre',
-    (req, res, next) => {
-        req.checkQuery('genre', 'Missing genre query parameter').notEmpty();
-        req.checkQuery('genre', 'Invalid genre').isValidGenre();
-        const validationErrors = req.validationErrors();
-        if (!_.isEmpty(validationErrors)) {
-            return res.status(400).send(validationErrors);
+app.get('/artists/for/genre', [
+        query('genre', 'Missing genre query parameter').exists({ checkFalsy: true })
+    ],
+    (req, res) => {
+        const validationErrors = validationResult(req);
+        if (!validationErrors.isEmpty()) {
+            return res.status(400).send(validationErrors.array());
         }
-        next();
-    },
-    async (req, res) => {
-        try {
-            const genre = req.query.genre;
 
-            // query artists
-            // if _.isEmpty(artists), return 404
+        const genre = req.query.genre;
 
-            res.status(200).send({ artists });
-        } catch (error) {
-            return res.status(500).send(error);
-        }
+        const params = {
+            TableName: TABLE,
+            KeyConditionExpression: 'genre = :genre',
+            ExpressionAttributeValues: {
+                ':genre': genre            }
+        };
+
+        queryDynamoDb(params)
+            .then(items => {
+                if (items.Count < 1) {
+                    return res.status(404).send(`No artists found for genre ${genre}`);
+                }
+                return res.status(200).send(_.map(items.Items, item => item.artist));
+            })
+            .catch(err => {
+                return res.status(500).send(err);
+            });
     }
 );
 
