@@ -139,27 +139,36 @@ app.get('/albums/for/artist', [
     }
 );
 
-app.get('/songs/for/album',
-    (req, res, next) => {
-        req.checkQuery('album', 'Missing album query parameter').notEmpty();
-        req.checkQuery('album', 'Invalid album').isValidAlbum();
-        const validationErrors = req.validationErrors();
-        if (!_.isEmpty(validationErrors)) {
-            return res.status(400).send(validationErrors);
+app.get('/songs/for/album', [
+        query('album', 'Missing album query parameter').exists({ checkFalsy: true })
+    ],
+    (req, res) => {
+        const validationErrors = validationResult(req);
+        if (!validationErrors.isEmpty()) {
+            return res.status(400).send(validationErrors.array());
         }
-        next();
-    },
-    async (req, res) => {
-        try {
-            const album = req.query.album;
 
-            // query songs
-            // if _.isEmpty(songs), return 404
+        const album = req.query.album;
 
-            res.status(200).send({ songs });
-        } catch (error) {
-            return res.status(500).send(error);
-        }
+        const params = {
+            TableName: TABLE,
+            IndexName: 'album-song-index',
+            KeyConditionExpression: 'album = :album',
+            ExpressionAttributeValues: {
+                ':album': album
+            }
+        };
+
+        queryDynamoDb(params)
+            .then(items => {
+                if (items.Count < 1) {
+                    return res.status(404).send(`No songs found for album ${album}`);
+                }
+                return res.status(200).send(_.map(items.Items, item => item.song));
+            })
+            .catch(err => {
+                return res.status(500).send(err);
+            });
     }
 );
 
