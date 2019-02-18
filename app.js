@@ -62,7 +62,16 @@ app.get('/', function (req, res) {
 });
 
 app.get('/genres', function (req, res) {
-
+    scanDynamoDb()
+        .then(items => {
+            if (items.Count < 1) {
+                return res.status(404).send('No genres found');
+            }
+            return res.status(200).send(_.map(items.Items, item => item.genre));
+        })
+        .catch(err => {
+            return res.status(500).send(err);
+        });
 });
 
 app.get('/artists/for/genre',
