@@ -4,6 +4,7 @@ const _ = require('lodash');
 const bodyParser = require('body-parser');
 
 const BUCKET = 'bucket-o-moosic';
+const TABLE = 'music';
 
 const app = express();
 
@@ -18,6 +19,23 @@ function convertFilePathsToObjects(filePaths) {
             return { song: fileNameParts[2], album: fileNameParts[1], artist: fileNameParts[0] }
         }
     });
+}
+
+function queryDynamoDb(params) {
+    const documentClient = new AWS.DynamoDB.DocumentClient({ region: 'us-east-1' });
+
+    return documentClient.query(params).promise();
+}
+
+function scanDynamoDb() {
+    const params = {
+        TableName : TABLE,
+        AttributesToGet: ['genre']
+    };
+
+    const documentClient = new AWS.DynamoDB.DocumentClient({ region: 'us-east-1' });
+
+    return documentClient.scan(params).promise();
 }
 
 app.use(function(req, res, next) {
@@ -42,6 +60,106 @@ app.get('/', function (req, res) {
             console.log(err);
         });
 });
+
+app.get('/genres', function (req, res) {
+
+});
+
+app.get('/artists/for/genre',
+    (req, res, next) => {
+        req.checkQuery('genre', 'Missing genre query parameter').notEmpty();
+        req.checkQuery('genre', 'Invalid genre').isValidGenre();
+        const validationErrors = req.validationErrors();
+        if (!_.isEmpty(validationErrors)) {
+            return res.status(400).send(validationErrors);
+        }
+        next();
+    },
+    async (req, res) => {
+        try {
+            const genre = req.query.genre;
+
+            // query artists
+            // if _.isEmpty(artists), return 404
+
+            res.status(200).send({ artists });
+        } catch (error) {
+            return res.status(500).send(error);
+        }
+    }
+);
+
+app.get('/albums/for/artist',
+    (req, res, next) => {
+        req.checkQuery('artist', 'Missing artist query parameter').notEmpty();
+        req.checkQuery('artist', 'Invalid artist').isValidArtist();
+        const validationErrors = req.validationErrors();
+        if (!_.isEmpty(validationErrors)) {
+            return res.status(400).send(validationErrors);
+        }
+        next();
+    },
+    async (req, res) => {
+        try {
+            const artist = req.query.artist;
+
+            // query albums
+            // if _.isEmpty(albums), return 404
+
+            res.status(200).send({ albums });
+        } catch (error) {
+            return res.status(500).send(error);
+        }
+    }
+);
+
+app.get('/songs/for/album',
+    (req, res, next) => {
+        req.checkQuery('album', 'Missing album query parameter').notEmpty();
+        req.checkQuery('album', 'Invalid album').isValidAlbum();
+        const validationErrors = req.validationErrors();
+        if (!_.isEmpty(validationErrors)) {
+            return res.status(400).send(validationErrors);
+        }
+        next();
+    },
+    async (req, res) => {
+        try {
+            const album = req.query.album;
+
+            // query songs
+            // if _.isEmpty(songs), return 404
+
+            res.status(200).send({ songs });
+        } catch (error) {
+            return res.status(500).send(error);
+        }
+    }
+);
+
+app.get('/song',
+    (req, res, next) => {
+        req.checkQuery('song', 'Missing song query parameter').notEmpty();
+        req.checkQuery('song', 'Invalid song').isValidSong();
+        const validationErrors = req.validationErrors();
+        if (!_.isEmpty(validationErrors)) {
+            return res.status(400).send(validationErrors);
+        }
+        next();
+    },
+    async (req, res) => {
+        try {
+            const song = req.query.song;
+
+            // query songs
+            // if _.isEmpty(songs), return 404
+
+            res.status(200).send({ songs });
+        } catch (error) {
+            return res.status(500).send(error);
+        }
+    }
+);
 
 app.post('/', function (req, res) {
     const s3Client = new AWS.S3();
