@@ -12,13 +12,7 @@ const app = express();
 function convertFilePathsToObjects(filePaths) {
     return _.map(filePaths, s3Object => {
         const fileNameParts = s3Object.Key.split('/');
-        if (fileNameParts.length === 1) {
-            return { song: fileNameParts[0] }
-        } else if (fileNameParts.length === 2) {
-            return { song: fileNameParts[1], album: fileNameParts[0] }
-        } else {
-            return { song: fileNameParts[2], album: fileNameParts[1], artist: fileNameParts[0] }
-        }
+        return { song: fileNameParts[3], album: fileNameParts[2], artist: fileNameParts[1], genre: fileNameParts[0] };
     });
 }
 
@@ -38,7 +32,7 @@ function getSignedUrl(key) {
     const s3Client = new AWS.S3();
     const params = {
         Bucket: BUCKET,
-        Key: 'country_song'
+        Key: key
     }
 
     return new Promise(function(resolve, reject) {
