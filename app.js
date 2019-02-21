@@ -82,7 +82,7 @@ app.get('/genres', function (req, res) {
             if (items.Count < 1) {
                 return res.status(404).send('No genres found');
             }
-            return res.status(200).send(_.map(items.Items, item => item.genre));
+            return res.status(200).send(_.uniq(_.map(items.Items, item => item.genre)));
         })
         .catch(err => {
             return res.status(500).send(err);
@@ -112,7 +112,7 @@ app.get('/artists/for/genre', [
                 if (items.Count < 1) {
                     return res.status(404).send(`No artists found for genre ${genre}`);
                 }
-                return res.status(200).send(_.map(items.Items, item => item.artist));
+                return res.status(200).send(_.uniq(_.map(items.Items, item => item.artist)));
             })
             .catch(err => {
                 return res.status(500).send(err);
@@ -133,7 +133,7 @@ app.get('/albums/for/artist', [
 
         const params = {
             TableName: TABLE,
-            IndexName: 'artist-album-index',
+            IndexName: 'artistAlbum',
             KeyConditionExpression: 'artist = :artist',
             ExpressionAttributeValues: {
                 ':artist': artist
@@ -145,7 +145,7 @@ app.get('/albums/for/artist', [
                 if (items.Count < 1) {
                     return res.status(404).send(`No albums found for artist ${artist}`);
                 }
-                return res.status(200).send(_.map(items.Items, item => item.album));
+                return res.status(200).send(_.uniq(_.map(items.Items, item => item.album)));
             })
             .catch(err => {
                 return res.status(500).send(err);
@@ -166,7 +166,7 @@ app.get('/songs/for/album', [
 
         const params = {
             TableName: TABLE,
-            IndexName: 'album-song-index',
+            IndexName: 'albumSong',
             KeyConditionExpression: 'album = :album',
             ExpressionAttributeValues: {
                 ':album': album
@@ -178,7 +178,7 @@ app.get('/songs/for/album', [
                 if (items.Count < 1) {
                     return res.status(404).send(`No songs found for album ${album}`);
                 }
-                return res.status(200).send(_.map(items.Items, item => item.song));
+                return res.status(200).send(_.uniq(_.map(items.Items, item => item.song)));
             })
             .catch(err => {
                 return res.status(500).send(err);
