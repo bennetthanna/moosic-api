@@ -56,21 +56,6 @@ app.use(function(req, res, next) {
 
 app.use(bodyParser.json());
 
-// app.get('/', function (req, res) {
-//     const s3Client = new AWS.S3();
-//     const params = {
-//         Bucket: BUCKET
-//     };
-//     s3Client.listObjectsV2(params).promise()
-//         .then(s3Response => {
-//             const files = convertFilePathsToObjects(s3Response.Contents);
-//             res.send(files);
-//         })
-//         .catch(err => {
-//             console.log(err);
-//         });
-// });
-
 app.get('/genres', function (req, res) {
     const params = {
         TableName : MUSIC_TABLE,
