@@ -7,6 +7,7 @@ const { query, validationResult } = require('express-validator/check');
 const BUCKET = 'bucket-o-moosic';
 const MUSIC_TABLE = 'music';
 const USER_TABLE = 'users';
+const SQS_QUEUE_URL = 'https://sqs.us-east-1.amazonaws.com/171578128461/reporting';
 
 const app = express();
 
@@ -26,6 +27,12 @@ function upsertDynamoDb(params) {
     const documentClient = new AWS.DynamoDB.DocumentClient({ region: 'us-east-1' });
 
     return documentClient.put(params).promise();
+}
+
+function sendSqsMessage(params) {
+    const sqsClient = new AWS.SQS({ region: 'us-east-1' });
+
+    return sqsClient.sendMessage(params).promise();
 }
 
 function getSignedUrl(key) {
@@ -217,6 +224,26 @@ app.post('/save-user', (req, res) => {
     upsertDynamoDb(params)
         .then(dynamoRes => {
             return res.status(200).send(dynamoRes);
+        })
+        .catch(err => {
+            console.log(err);
+            return res.status(500).send(err);
+        })
+});
+
+app.post('/play', (req, res) => {
+    const params = {
+      MessageBody: JSON.stringify({
+        artist: req.body.artist,
+        album: req.body.album,
+        song: req.body.song
+      }),
+      QueueUrl: SQS_QUEUE_URL
+    };
+
+    sendSqsMessage(params)
+        .then(sqsRes => {
+            return res.status(200).send(sqsRes.MessageId);
         })
         .catch(err => {
             console.log(err);
