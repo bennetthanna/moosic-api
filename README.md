@@ -115,3 +115,22 @@ POST http://localhost:3000/save-user
 Status code: 200
 { }
 ```
+
+### POST /play
+* Publishes the `artist`, `album`, and `song` to the `reporting` SQS queue to be consumed
+
+**Sample Request**
+```json
+POST http://localhost:3000/play
+{
+	"artist": "miley-cyrus",
+	"album": "bangerz",
+	"id": "wrecking-ball"
+}
+```
+
+**Sample Response**
+```
+Status code: 200
+38b409c8-d771-4871-bde4-933b0f1e2c33
+```
